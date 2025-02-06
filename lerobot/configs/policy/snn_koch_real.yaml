@@ -1,0 +1,62 @@
+# @package _global_
+
+seed: 1000
+dataset_repo_id: lerobot/koch_pick_place_lego
+use_pointcloud: false
+camera_intrinsic: [[604.534,0,313.181],[0,604.168,250.928],[0,0,1]]
+use_amp: false
+
+override_dataset_stats:
+  observation.images.view_front:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+  observation.images.view_side:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+
+training:
+  train_gpus: [0]
+  offline_steps: 10000
+  online_steps: 0
+  eval_freq: -1
+  save_freq: 2000
+  log_freq: 100
+  save_checkpoint: true
+  num_workers: 0
+
+  batch_size: 8
+  lr: 1e-4
+  # lr_backbone: 1e-4
+  # lr_warmup_steps: 200
+  weight_decay: 1e-5
+  grad_clip_norm: 10
+  online_steps_between_rollouts: 1
+
+  delta_timestamps:
+    action: "[i / ${fps} for i in range(${policy.num_action})]"
+
+eval:
+  n_episodes: 50
+  batch_size: 50
+
+# See `configuration_act.py` for more details.
+policy:
+
+  name: snn
+  
+  input_shapes:
+    # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
+    observation.images.view_front: [3, 480, 640]
+    observation.images.view_side: [3, 480, 640]
+    observation.state: ["${env.state_dim}"]
+
+  num_action: 10
+  input_dim : 6
+  img_dim : 64
+  state_dim : 6
+  hidden_dim : 256
+  action_dim : 6
+  dropout : 0.1
+  device : cuda

@@ -1,0 +1,11 @@
+DATASET="t10000"
+DATE="2025_1_24_t10000"
+DATA_DIR=data python lerobot/scripts/train.py \
+  dataset_repo_id=$DATASET \
+  policy=RISE_koch_real \
+  env=koch_real \
+  hydra.run.dir=outputs/train/RISE_$DATE \
+  hydra.job.name=RISE_$DATE \
+  device=cuda \
+  wandb.enable=true \
+  resume=false

@@ -1,0 +1,11 @@
+DATASET="koch_test_2024_12_12__"
+DATE="2024_12_12"
+DATA_DIR=data python lerobot/scripts/train.py \
+  dataset_repo_id=$DATASET \
+  policy=atm_koch_real \
+  env=koch_real \
+  hydra.run.dir=outputs/train/atm_koch_test_$DATE \
+  hydra.job.name=atm_koch_test_$DATE \
+  device=cuda \
+  wandb.enable=true \
+  resume=true

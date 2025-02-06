@@ -1,0 +1,134 @@
+# @package _global_
+
+# DATA_DIR=data python lerobot/scripts/train.py \
+#   dataset_repo_id=koch_test_2024_12_12__ \
+#   policy=atm_koch_real \
+#   env=koch_real \
+#   hydra.run.dir=outputs/train/atm_koch_test_2024_12_12 \
+#   hydra.job.name=atm_koch_test_2024_12_12 \
+#   device=cuda
+
+
+seed: 0
+dataset_repo_id: lerobot/koch_pick_place_lego
+use_pointcloud: false
+camera_intrinsic: [[1,1,1],[1,1,1],[1,1,1]]
+
+override_dataset_stats:
+  observation.images.view_front:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+  observation.images.view_side:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+
+training:
+  offline_steps: 20000
+  online_steps: 0
+  eval_freq: -1
+  save_freq: 1000
+  log_freq: 100
+  save_checkpoint: true
+  train_gpus: [0]
+  batch_size: 1
+  lr: 5e-4
+  clip_grad: 100.
+
+  grad_clip_norm: 10
+  online_steps_between_rollouts: 1
+
+  delta_timestamps:
+    observation.images.view_front: "[i / ${fps} for i in range(1 - ${policy.num_track_ts}, ${policy.frame_stack})]"
+    observation.images.view_side: "[i / ${fps} for i in range(1 - ${policy.num_track_ts}, ${policy.frame_stack})]"
+    action: "[i / ${fps} for i in range(${policy.frame_stack})]"
+  
+  optimizer_cfg:
+    type: torch.optim.AdamW
+    params:
+      lr: ${training.lr}
+      weight_decay: 1e-4  
+
+  scheduler_cfg:
+    type: CosineAnnealingLR
+    params:
+      T_max: ${training.offline_steps} # TODO
+      eta_min: 0.
+      last_epoch: -1  
+
+eval:
+  n_episodes: 50
+  batch_size: 50
+
+policy:
+
+  name: atm
+
+  input_shapes:
+    # TODO(rcadene, alexander-soare): add variables for height and width from the dataset/env?
+    observation.images.view_front: [3, 480, 640]
+    observation.images.view_side: [3, 480, 640]
+    observation.state: ["${env.state_dim}"]
+
+  img_size: [256,256]
+  frame_stack: 10
+  num_track_ts: 16
+  num_track_ids: 32
+  # extra_state_keys: ["joint_states", "gripper_states"]  
+  extra_state_keys: []
+
+  aug_prob: 0.9 
+
+  model_name: BCViLTPolicy
+  model_cfg:
+    load_path: null
+    obs_cfg:
+      obs_shapes:
+        rgb: [3, 256, 256]
+        tracks: [16, 32, 2]
+      img_mean: [ 0., 0., 0. ]
+      img_std: [ 1.0, 1.0, 1.0 ]
+      num_views: 1
+      extra_states: ${policy.extra_state_keys}
+      max_seq_len: ${policy.frame_stack}
+    img_encoder_cfg:
+      network_name: PatchEncoder
+      patch_size: [8, 8]
+      embed_size: 128
+      no_patch_embed_bias: false
+    language_encoder_cfg:
+      network_name: MLPEncoder
+      input_size: 768
+      hidden_size: 128
+      num_layers: 1
+    extra_state_encoder_cfg:
+      extra_num_layers: 0
+      extra_hidden_size: 128
+    track_cfg:
+      track_fn: outputs/1119_real_track_transformer_real_human_ep1000_1707
+      policy_track_patch_size: 16
+      use_zero_track: false
+    spatial_transformer_cfg:
+      num_layers: 7
+      num_heads: 8
+      head_output_size: 120
+      mlp_hidden_size: 256
+      dropout: 0.1
+      spatial_downsample: true
+      spatial_downsample_embed_size: 64
+      use_language_token: false
+    temporal_transformer_cfg:
+      num_layers: 4
+      num_heads: 6
+      head_output_size: 64
+      mlp_hidden_size: 256
+      dropout: 0.1
+      use_language_token: false
+    policy_head_cfg:
+      network_name: DeterministicHead
+      output_size: [6,]
+      hidden_size: 1024
+      num_layers: 2
+      loss_coef: 1.0
+      action_squash: false  
