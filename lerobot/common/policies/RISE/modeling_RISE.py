@@ -63,11 +63,11 @@ class RISEPolicy(nn.Module,PyTorchModelHubMixin,):
         ).shape[0]
 
         if len(self._action_queue) == 0:
-            cloud_coords = batch['input_coords_list'][0]
-            cloud_feats = batch['input_feats_list'][0] 
+            cloud_coords = batch['input_coords_list']
+            cloud_feats = batch['input_feats_list'] 
             MEAN = torch.tensor([0.485, 0.456, 0.406])
             STD = torch.tensor([0.229, 0.224, 0.225])
-            cloud_coords, cloud_feats = ME.utils.sparse_collate(cloud_coords, cloud_feats)
+            # cloud_coords, cloud_feats = ME.utils.sparse_collate(cloud_coords, cloud_feats)
             cloud_feats[:,3:] = (cloud_feats[:,3:] - MEAN) / STD
             cloud = ME.SparseTensor(cloud_feats, cloud_coords,device=self.device)
 
@@ -96,15 +96,15 @@ class RISEPolicy(nn.Module,PyTorchModelHubMixin,):
 
         # cloud_coords = torch.stack([item for b in batch['input_coords_list'] for item in b])
         # cloud_feats = torch.stack([item for b in batch['input_feats_list'] for item in b])
-        cloud_coords = batch['input_coords_list'][0]
-        cloud_feats = batch['input_feats_list'][0]
+        cloud_coords = batch['input_coords_list']
+        cloud_feats = batch['input_feats_list']
         MEAN = self.dataset_stats['observation.images.view_front']['mean'].squeeze().to(self.device) 
         STD = self.dataset_stats['observation.images.view_front']['std'].squeeze().to(self.device) 
         # for i in len(cloud_coords):
         #     cloud_coords[i]=cloud_coords[i].to(self.device)
         # for i in len(cloud_feats):
         #     cloud_feats[i]=cloud_feats[i].to(self.device)
-        cloud_coords, cloud_feats = ME.utils.sparse_collate(cloud_coords, cloud_feats)
+        # cloud_coords, cloud_feats = ME.utils.sparse_collate(cloud_coords, cloud_feats)
         cloud_feats[:,3:] = (cloud_feats[:,3:] - MEAN) / STD
         cloud = ME.SparseTensor(cloud_feats, cloud_coords,device=self.device)
         src, pos, src_padding_mask = self.sparse_encoder(cloud, batch_size=batch_size)

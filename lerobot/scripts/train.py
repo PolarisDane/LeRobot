@@ -36,7 +36,7 @@ from lerobot.common.datasets.factory import make_dataset, resolve_delta_timestam
 from lerobot.common.datasets.lerobot_dataset import MultiLeRobotDataset
 from lerobot.common.datasets.online_buffer import OnlineBuffer, compute_sampler_weights
 from lerobot.common.datasets.sampler import EpisodeAwareSampler
-from lerobot.common.datasets.utils import cycle
+from lerobot.common.datasets.utils import cycle, collate_fn
 from lerobot.common.envs.factory import make_env
 from lerobot.common.logger import Logger, log_output_dir
 from lerobot.common.policies.factory import make_policy
@@ -49,6 +49,7 @@ from lerobot.common.utils.utils import (
     init_logging,
     set_global_seed,
 )
+from lerobot.configs.policies import PreTrainedConfig
 from lerobot.scripts.eval import eval_policy
 
 import lightning
@@ -124,7 +125,23 @@ def make_optimizer_and_scheduler(cfg, policy):
             policy.parameters(), lr=cfg.training.lr, weight_decay=cfg.training.weight_decay
         )
         lr_scheduler = None
-
+    elif cfg.policy.name == 'pi0':
+        from lerobot.common.optim.optimizers import AdamWConfig
+        from lerobot.common.optim.schedulers import CosineDecayWithWarmupSchedulerConfig
+        params = policy.parameters()
+        # import pdb; pdb.set_trace()
+        optimizer = AdamWConfig(
+            lr=cfg.policy.optimizer_lr,
+            betas=cfg.policy.optimizer_betas,
+            eps=cfg.policy.optimizer_eps,
+            weight_decay=cfg.policy.optimizer_weight_decay,
+        ).build(params)
+        lr_scheduler = CosineDecayWithWarmupSchedulerConfig(
+            peak_lr=cfg.policy.optimizer_lr,
+            decay_lr=cfg.policy.scheduler_decay_lr,
+            num_warmup_steps=cfg.policy.scheduler_warmup_steps,
+            num_decay_steps=cfg.policy.scheduler_decay_steps,
+        ).build(optimizer, 0) # Deleted in first step of the function, no use.
     else:
         raise NotImplementedError()
 
@@ -269,6 +286,7 @@ def log_eval_info(logger, info, step, cfg, dataset, is_online):
 def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = None):
     fabric = Fabric(accelerator="cuda", devices=list(cfg.training.train_gpus), precision="bf16-mixed" if cfg.use_amp else None, strategy="deepspeed")
     fabric.launch()
+    # import pdb; pdb.set_trace()
     if out_dir is None:
         raise NotImplementedError()
     if job_name is None:
@@ -276,6 +294,11 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
 
     init_logging()
     logging.info(pformat(OmegaConf.to_container(cfg)))
+
+    if cfg.policy.pretrained_path != None:
+        # Load preset config for dataset factory.
+        policy_cfg = PreTrainedConfig.from_pretrained(cfg.policy.pretrained_path)
+        cfg.training.delta_timestamps = [i / cfg.fps for i in range(policy_cfg.chunk_size)]
 
     if cfg.training.online_steps > 0 and isinstance(cfg.dataset_repo_id, ListConfig):
         raise NotImplementedError("Online training with LeRobotMultiDataset is not implemented.")
@@ -333,6 +356,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
         )
 
     # log metrics to terminal and wandb
+    # import pdb; pdb.set_trace()
     logger = Logger(cfg, out_dir, wandb_job_name=job_name)
 
     set_global_seed(cfg.seed)
@@ -458,6 +482,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
         sampler=sampler,
         pin_memory=device.type != "cpu",
         drop_last=False,
+        collate_fn=collate_fn if cfg.policy.name == "RISE" else None
     )
     dataloader = fabric.setup_dataloaders(dataloader)
 
@@ -512,7 +537,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
             start_time = time.perf_counter()
         if fabric.is_global_zero:
             logger.log_dict({"loss_by_epoch": losses / len(dataloader)}, step, mode="train")
-        if step == cfg.training.offline_steps:
+        if step >= cfg.training.offline_steps:
             break
 
     # Fabric use currently ends here

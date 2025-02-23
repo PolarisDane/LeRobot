@@ -16,6 +16,8 @@
 import torch
 from torch import Tensor, nn
 
+from lerobot.configs.types import NormalizationMode
+
 
 def create_stats_buffers(
     shapes: dict[str, list[int]],
@@ -35,7 +37,24 @@ def create_stats_buffers(
     stats_buffers = {}
 
     for key, mode in modes.items():
+        # import pdb; pdb.set_trace()
+        if mode == "identity":
+            continue
+        if mode == NormalizationMode.IDENTITY:
+            continue
+        if mode == NormalizationMode.MEAN_STD:
+            mode = "mean_std"
+        if mode == NormalizationMode.MIN_MAX:
+            mode = "min_max"
+        # import pdb; pdb.set_trace()
         assert mode in ["mean_std", "min_max"]
+
+        # By cyx: Lerobot has made an adjustment here to iterate base on features(shapes) rather than modes.
+        # Therefore they can use a overall mapping of normalization, do notice when merging the codes.
+
+        if key not in shapes.keys():
+            print("Ignore this only if you are finetuning PI0!!!")
+            continue
 
         shape = tuple(shapes[key])
 

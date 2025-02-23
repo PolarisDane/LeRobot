@@ -1,0 +1,59 @@
+# @package _global_
+
+# Defaults for training for the PushT dataset as per https://github.com/real-stanford/diffusion_policy.
+# Note: We do not track EMA model weights as we discovered it does not improve the results. See
+#       https://github.com/huggingface/lerobot/pull/134 for more details.
+
+seed: 100000
+dataset_repo_id: lerobot/pusht
+use_pointcloud: false
+camera_intrinsic: None
+
+override_dataset_stats:
+  # TODO(rcadene, alexander-soare): should we remove image stats as well? do we use a pretrained vision model?
+  observation.images.view_front:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+  observation.images.view_side:
+    # stats from imagenet, since we use a pretrained vision model
+    mean: [[[0.485]], [[0.456]], [[0.406]]]  # (c,1,1)
+    std: [[[0.229]], [[0.224]], [[0.225]]]  # (c,1,1)
+  # TODO(rcadene, alexander-soare): we override state and action stats to use the same as the pretrained model
+  # from the original codebase, but we should remove these and train our own pretrained model
+
+training:
+  train_gpus: [0]
+  offline_steps: -1
+  training_epochs: 600
+  online_steps: 0
+  eval_freq: -1
+  save_freq: -1
+  save_checkpoint: true
+
+  batch_size: 1
+
+  # delta_timestamps:
+  #   action: "[i / ${fps} for i in range(${policy.chunk_size})]"
+
+eval:
+  n_episodes: 50
+  batch_size: 50
+
+policy:
+  name: pi0
+  pretrained_path: "lerobot/pi0"
+
+  input_features:
+    observation.images.view_front: [3, 480, 640]
+    observation.images.view_side: [3, 480, 640]
+    observation.state: ["${env.state_dim}"]
+  output_features:
+    action: ["${env.action_dim}"]
+
+  normalization_mapping:
+    observation.images.view_front: identity
+    observation.images.view_side: identity
+    observation.state: mean_std
+    action: mean_std
+  

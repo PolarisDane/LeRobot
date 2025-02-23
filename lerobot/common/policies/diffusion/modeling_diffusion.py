@@ -153,8 +153,8 @@ class DiffusionPolicy(
             batch = dict(batch)  # shallow copy so that adding a key doesn't modify the original
             batch["observation.images"] = torch.stack([batch[k] for k in self.expected_image_keys], dim=-4)
         batch = self.normalize_targets(batch)
-        loss, loss_by_parts = self.diffusion.compute_loss(batch)
-        return {"loss": loss, "loss_by_parts": loss_by_parts}
+        loss = self.diffusion.compute_loss(batch)
+        return {"loss": loss}
 
 
 def _make_noise_scheduler(name: str, **kwargs: dict) -> DDPMScheduler | DDIMScheduler:
@@ -335,8 +335,6 @@ class DiffusionModel(nn.Module):
         else:
             raise ValueError(f"Unsupported prediction type {self.config.prediction_type}")
 
-        import pdb; pdb.set_trace()
-
         loss = F.mse_loss(pred, target, reduction="none")
 
         # Mask loss wherever the action is padded with copies (edges of the dataset trajectory).
@@ -349,7 +347,7 @@ class DiffusionModel(nn.Module):
             in_episode_bound = ~batch["action_is_pad"]
             loss = loss * in_episode_bound.unsqueeze(-1)
 
-        return loss.mean(), loss.mean(dim=0)
+        return loss.mean()
 
 
 class SpatialSoftmax(nn.Module):

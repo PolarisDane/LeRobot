@@ -63,7 +63,7 @@ policy:
     observation.depths.view_side: [480, 640]
     observation.state: ["${env.state_dim}"]
   output_shapes:
-    action: 6
+    action: [6]
   num_action: 20
   input_dim :  6
   num_obs : 1

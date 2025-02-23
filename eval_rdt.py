@@ -1,7 +1,7 @@
 from lerobot.common.robot_devices.motors.dynamixel import DynamixelMotorsBus
 
 leader_port = "/dev/ttyUSB0"
-follower_port = "/dev/ttyUSB2"
+follower_port = "/dev/ttyUSB1"
 
 leader_arm = DynamixelMotorsBus(
     port=leader_port,
@@ -31,6 +31,7 @@ follower_arm = DynamixelMotorsBus(
 
 from lerobot.common.robot_devices.robots.manipulator import ManipulatorRobot
 from lerobot.common.robot_devices.cameras.opencv import OpenCVCamera
+from lerobot.common.robot_devices.cameras.intelrealsense import IntelRealSenseCamera
 
 robot = ManipulatorRobot(
     robot_type="koch",
@@ -38,7 +39,7 @@ robot = ManipulatorRobot(
     follower_arms={"left": follower_arm},
     calibration_dir=".cache/calibration/koch",
     cameras={
-        "view1": OpenCVCamera(12, fps=30, width=640, height=480), # rgb
+        "view_front": IntelRealSenseCamera(408122072021,fps=30, width=640, height=480, use_depth = True),
         # "view2": OpenCVCamera(6, fps=30, width=640, height=480),
     },
 )
@@ -88,7 +89,7 @@ def get_arguments():
                         default=30, required=False)
     parser.add_argument('--ctrl_freq', action='store', type=int, 
                         help='The control frequency of the robot',
-                        default=25, required=False)
+                        default=30, required=False)
     
     parser.add_argument('--chunk_size', action='store', type=int, 
                         help='Action chunk size',

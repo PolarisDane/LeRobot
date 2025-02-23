@@ -1,7 +1,7 @@
 from lerobot.common.robot_devices.motors.dynamixel import DynamixelMotorsBus
 
 leader_port_1 = "/dev/ttyUSB0"
-follower_port_1 = "/dev/ttyUSB2"
+follower_port_1 = "/dev/ttyUSB1"
 #leader_port_2 = "/dev/ttyUSB0"
 #follower_port_2 = "/dev/ttyUSB1"
 

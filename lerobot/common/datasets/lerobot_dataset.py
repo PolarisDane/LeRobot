@@ -39,7 +39,6 @@ from lerobot.common.datasets.track_utils import track_through_video
 import numpy as np
 import open3d as o3d
 
-
 # For maintainers, see lerobot/common/datasets/push_dataset_to_hub/CODEBASE_VERSION.md
 CODEBASE_VERSION = "v1.6"
 DATA_DIR = Path(os.environ["DATA_DIR"]) if "DATA_DIR" in os.environ else None
@@ -176,7 +175,7 @@ class LeRobotDataset(torch.utils.data.Dataset):
 
 
 
-        if self.use_pointcloud and self.camera_intrinsic != None: 
+        if self.use_pointcloud and (self.camera_intrinsic is not None): 
             clouds=[]
             expected_image_keys.remove("observation.images.view_side")
             expected_depth_keys.remove("observation.depths.view_side")
@@ -187,9 +186,8 @@ class LeRobotDataset(torch.utils.data.Dataset):
 
             for i in range(images.shape[0]):
                 points, colors = self.load_point_cloud(images[i], depths[i],voxel_size)
-            #TODO: apply imagenet normalization
-            cloud = np.concatenate([points, colors], axis = -1)
-            clouds.append(cloud)
+                cloud = np.concatenate([points, colors], axis = -1)
+                clouds.append(cloud)
 
             input_coords_list = []
             input_feats_list = []
@@ -248,8 +246,6 @@ class LeRobotDataset(torch.utils.data.Dataset):
         points = np.array(pcd.points)
         colors = np.array(pcd.colors)
         return points.astype(np.float32), colors.astype(np.float32)
-
-
 
     @classmethod
     def from_preloaded(

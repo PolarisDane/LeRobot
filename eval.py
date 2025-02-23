@@ -2,8 +2,8 @@ from lerobot.common.robot_devices.motors.dynamixel import DynamixelMotorsBus
 import numpy as np
 import open3d as o3d
 
-leader_port = "/dev/ttyUSB0"
-follower_port = "/dev/ttyUSB2"
+leader_port = "/dev/ttyUSB1"
+follower_port = "/dev/ttyUSB0"
 
 leader_arm = DynamixelMotorsBus(
     port=leader_port,
@@ -55,6 +55,7 @@ from lerobot.common.policies.SNN.modeling_snn import SNNPolicy
 from lerobot.common.policies.spikeact.modeling_spikeact import SpikeACTPolicy
 from lerobot.common.policies.vqbet.modeling_vqbet import VQBeTPolicy
 from lerobot.common.policies.RISE.modeling_RISE import RISEPolicy
+from lerobot.common.policies.pi0.modeling_pi0 import PI0Policy
 import time
 import torch
 import cv2
@@ -64,8 +65,9 @@ inference_time_s = 60
 fps = 30
 device = "cuda"  # TODO: On Mac, use "mps" or "cpu"
 
-ckpt_path = "/home/rhos/lerobot/outputs/train/dp_2025_1_23_t10003/checkpoints/last/pretrained_model"
-policy = DiffusionPolicy.from_pretrained(ckpt_path)
+ckpt_path = "/mnt/sda/cyx/outputs/train/act_2025_2_17_t10003_limited_dual_randomization/checkpoints/061200/pretrained_model"
+# policy = PI0Policy.from_pretrained("lerobot/pi0")
+policy = ACTPolicy.from_pretrained(ckpt_path)
 policy.eval()
 policy.to(device)
 

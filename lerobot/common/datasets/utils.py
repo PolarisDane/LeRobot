@@ -27,6 +27,9 @@ from huggingface_hub import DatasetCard, HfApi, hf_hub_download, snapshot_downlo
 from PIL import Image as PILImage
 from safetensors.torch import load_file
 from torchvision import transforms
+import collections.abc as container_abcs
+
+import MinkowskiEngine as ME
 
 DATASET_CARD_TEMPLATE = """
 ---
@@ -35,6 +38,11 @@ DATASET_CARD_TEMPLATE = """
 This dataset was created using [LeRobot](https://github.com/huggingface/lerobot).
 
 """
+
+def write_json(data: dict, fpath: Path) -> None:
+    fpath.parent.mkdir(exist_ok=True, parents=True)
+    with open(fpath, "w") as f:
+        json.dump(data, f, indent=4, ensure_ascii=False)
 
 
 def flatten_dict(d, parent_key="", sep="/"):
@@ -424,3 +432,22 @@ def create_lerobot_dataset_card(tags: list | None = None, text: str | None = Non
     if text is not None:
         card.text += text
     return card
+
+
+def collate_fn(batch):
+    if type(batch[0]).__module__ == "numpy":
+        return torch.stack([torch.from_numpy(b) for b in batch], 0)
+    elif torch.is_tensor(batch[0]):
+        return torch.stack(batch, 0)
+    elif isinstance(batch[0], container_abcs.Mapping):
+        ret_dict = {}
+        for key in batch[0]:
+            ret_dict[key] = collate_fn([d[key] for d in batch])
+        coords_batch = ret_dict["input_coords_list"]
+        feats_batch = ret_dict["input_feats_list"]
+        coords_batch, feats_batch = ME.utils.sparse_collate(coords_batch, feats_batch)
+        ret_dict["input_coords_list"] = coords_batch
+        ret_dict["input_feats_list"] = feats_batch
+        return ret_dict
+    elif isinstance(batch[0], container_abcs.Sequence):
+        return [sample for b in batch for sample in b]

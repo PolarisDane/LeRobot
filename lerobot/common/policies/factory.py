@@ -18,11 +18,15 @@ import logging
 
 from omegaconf import DictConfig, OmegaConf
 
+from lerobot.common.policies.pi0.modeling_pi0 import PI0Policy
 from lerobot.common.policies.policy_protocol import Policy
 from lerobot.common.utils.utils import get_safe_torch_device
+from lerobot.configs.policies import PreTrainedConfig
+from lerobot.configs.types import FeatureType
 
 
 def _policy_cfg_from_hydra_cfg(policy_cfg_class, hydra_cfg):
+    # import pdb; pdb.set_trace()
     expected_kwargs = set(inspect.signature(policy_cfg_class).parameters)
     if not set(hydra_cfg.policy).issuperset(expected_kwargs):
         logging.warning(
@@ -33,6 +37,19 @@ def _policy_cfg_from_hydra_cfg(policy_cfg_class, hydra_cfg):
     # issues with mutable defaults. This filter changes all lists to tuples.
     def list_to_tuple(item):
         return tuple(item) if isinstance(item, list) else item
+    
+    if hydra_cfg.policy.pretrained_path != None:
+        # import pdb; pdb.set_trace()
+        # By cyx: Load pretrain config and update according to given hydra config.
+        # Currently just for PI0.
+        # PI0 config passes a mapping of normalization method where we assign individually.
+        # A little change here.
+        policy_cfg = PreTrainedConfig.from_pretrained(hydra_cfg.policy.pretrained_path)
+        policy_cfg.pretrained_path = hydra_cfg.policy.pretrained_path
+        for k, v in OmegaConf.to_container(hydra_cfg.policy, resolve=True).items():
+            if k in expected_kwargs:
+                setattr(policy_cfg, k, list_to_tuple(v))
+        return policy_cfg
 
     policy_cfg = policy_cfg_class(
         **{
@@ -81,6 +98,11 @@ def get_policy_and_config_classes(name: str) -> tuple[Policy, object]:
         from lerobot.common.policies.SNN.modeling_snn import SNNPolicy
 
         return SNNPolicy, SNNConfig
+    elif name == "pi0":
+        from lerobot.common.policies.pi0.configuration_pi0 import PI0Config
+        from lerobot.common.policies.pi0.modeling_pi0 import PI0Policy
+
+        return PI0Policy, PI0Config
     else:
         raise NotImplementedError(f"Policy with name {name} is not implemented.")
 
@@ -104,11 +126,25 @@ def make_policy(
         raise ValueError(
             "Exactly one of `pretrained_policy_name_or_path` and `dataset_stats` must be provided."
         )
+    # By cyx: We should allow the above to happen when finetuning a model on our own dataset.
+    # We will just make it an exception.
 
     policy_cls, policy_cfg_class = get_policy_and_config_classes(hydra_cfg.policy.name)
 
     policy_cfg = _policy_cfg_from_hydra_cfg(policy_cfg_class, hydra_cfg)
-    if pretrained_policy_name_or_path is None:
+
+    import pdb; pdb.set_trace()
+
+    if hydra_cfg.policy.pretrained_path != None:
+        pretrained_policy_name_or_path = hydra_cfg.policy.pretrained_path
+
+    if pretrained_policy_name_or_path != None and dataset_stats != None:
+        kwargs = {}
+        kwargs["pretrained_name_or_path"] = pretrained_policy_name_or_path
+        kwargs["dataset_stats"] = dataset_stats
+        kwargs["config"] = policy_cfg
+        policy = policy_cls.from_pretrained(**kwargs)
+    elif pretrained_policy_name_or_path is None:
         # Make a fresh policy.
         policy = policy_cls(policy_cfg, dataset_stats)
     else:
