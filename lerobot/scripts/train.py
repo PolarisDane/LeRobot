@@ -296,9 +296,11 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     logging.info(pformat(OmegaConf.to_container(cfg)))
 
     if cfg.policy.pretrained_path != None:
-        # Load preset config for dataset factory.
+        # By cyx: Load preset config for dataset factory.
+        # We can merge this with policy factory later on
+        # MODIFICATION NEEDED HERE!
         policy_cfg = PreTrainedConfig.from_pretrained(cfg.policy.pretrained_path)
-        cfg.training.delta_timestamps = [i / cfg.fps for i in range(policy_cfg.chunk_size)]
+        cfg.training.delta_timestamps.action = [i / cfg.fps for i in range(policy_cfg.chunk_size)]
 
     if cfg.training.online_steps > 0 and isinstance(cfg.dataset_repo_id, ListConfig):
         raise NotImplementedError("Online training with LeRobotMultiDataset is not implemented.")
@@ -401,6 +403,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     if cfg.training.save_freq == -1:
         cfg.training.save_freq = cfg.training.offline_steps // 10
 
+    import pdb; pdb.set_trace()
     optimizer, lr_scheduler = make_optimizer_and_scheduler(cfg, policy)
     grad_scaler = GradScaler(enabled=cfg.use_amp)
 

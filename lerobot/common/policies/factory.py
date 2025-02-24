@@ -47,8 +47,10 @@ def _policy_cfg_from_hydra_cfg(policy_cfg_class, hydra_cfg):
         policy_cfg = PreTrainedConfig.from_pretrained(hydra_cfg.policy.pretrained_path)
         policy_cfg.pretrained_path = hydra_cfg.policy.pretrained_path
         for k, v in OmegaConf.to_container(hydra_cfg.policy, resolve=True).items():
-            if k in expected_kwargs:
+            if k in expected_kwargs and v is not None:
                 setattr(policy_cfg, k, list_to_tuple(v))
+            if k in expected_kwargs and v is None:
+                hydra_cfg.policy[k] = getattr(policy_cfg, k)
         return policy_cfg
 
     policy_cfg = policy_cfg_class(
@@ -133,7 +135,7 @@ def make_policy(
 
     policy_cfg = _policy_cfg_from_hydra_cfg(policy_cfg_class, hydra_cfg)
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
     if hydra_cfg.policy.pretrained_path != None:
         pretrained_policy_name_or_path = hydra_cfg.policy.pretrained_path
