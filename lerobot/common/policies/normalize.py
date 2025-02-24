@@ -16,7 +16,7 @@
 import torch
 from torch import Tensor, nn
 
-from lerobot.configs.types import NormalizationMode
+from lerobot.configs.types import NormalizationMode, PolicyFeature
 
 
 def create_stats_buffers(
@@ -35,28 +35,29 @@ def create_stats_buffers(
             `nn.Parameters` set to `requires_grad=False`, suitable to not be updated during backpropagation.
     """
     stats_buffers = {}
-
     for key, mode in modes.items():
-        # import pdb; pdb.set_trace()
-        if mode == "identity":
-            continue
         if mode == NormalizationMode.IDENTITY:
-            continue
+            modes[key] = "identity"
+            mode = "identity"
         if mode == NormalizationMode.MEAN_STD:
+            modes[key] = "mean_std"
             mode = "mean_std"
         if mode == NormalizationMode.MIN_MAX:
+            modes[key] = "min_max"
             mode = "min_max"
-        # import pdb; pdb.set_trace()
+        if mode == "identity":
+            continue
+        if key not in shapes.keys():
+            continue
         assert mode in ["mean_std", "min_max"]
 
         # By cyx: Lerobot has made an adjustment here to iterate base on features(shapes) rather than modes.
         # Therefore they can use a overall mapping of normalization, do notice when merging the codes.
 
-        if key not in shapes.keys():
-            print("Ignore this only if you are finetuning PI0!!!")
-            continue
-
-        shape = tuple(shapes[key])
+        if shapes[key].__class__ == PolicyFeature:
+            shape = tuple(shapes[key].shape)
+        else:
+            shape = tuple(shapes[key])
 
         if "image" in key:
             # sanity checks
@@ -153,6 +154,10 @@ class Normalize(nn.Module):
     def forward(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
         batch = dict(batch)  # shallow copy avoids mutating the input batch
         for key, mode in self.modes.items():
+            if mode == "identity":
+                continue
+            if key not in self.shapes.keys():
+                continue
             buffer = getattr(self, "buffer_" + key.replace(".", "_"))
 
             if mode == "mean_std":
@@ -210,7 +215,7 @@ class Unnormalize(nn.Module):
         self.modes = modes
         self.stats = stats
         # `self.buffer_observation_state["mean"]` contains `torch.tensor(state_dim)`
-        stats_buffers = create_stats_buffers(shapes, modes, stats)
+        stats_buffers = create_stats_buffers(self.shapes, self.modes, self.stats)
         for key, buffer in stats_buffers.items():
             setattr(self, "buffer_" + key.replace(".", "_"), buffer)
 
@@ -219,6 +224,10 @@ class Unnormalize(nn.Module):
     def forward(self, batch: dict[str, Tensor]) -> dict[str, Tensor]:
         batch = dict(batch)  # shallow copy avoids mutating the input batch
         for key, mode in self.modes.items():
+            if mode == "identity":
+                continue
+            if key not in self.shapes.keys():
+                continue
             buffer = getattr(self, "buffer_" + key.replace(".", "_"))
 
             if mode == "mean_std":

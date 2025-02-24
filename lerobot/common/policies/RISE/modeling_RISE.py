@@ -63,11 +63,11 @@ class RISEPolicy(nn.Module,PyTorchModelHubMixin,):
         ).shape[0]
 
         if len(self._action_queue) == 0:
-            cloud_coords = batch['input_coords_list']
-            cloud_feats = batch['input_feats_list'] 
+            cloud_coords = batch['input_coords_list'][0]
+            cloud_feats = batch['input_feats_list'][0]
             MEAN = torch.tensor([0.485, 0.456, 0.406])
             STD = torch.tensor([0.229, 0.224, 0.225])
-            # cloud_coords, cloud_feats = ME.utils.sparse_collate(cloud_coords, cloud_feats)
+            cloud_coords, cloud_feats = ME.utils.sparse_collate(cloud_coords, cloud_feats)
             cloud_feats[:,3:] = (cloud_feats[:,3:] - MEAN) / STD
             cloud = ME.SparseTensor(cloud_feats, cloud_coords,device=self.device)
 

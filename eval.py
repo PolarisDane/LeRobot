@@ -60,14 +60,38 @@ import time
 import torch
 import cv2
 from lerobot.scripts.control_robot import busy_wait
+from safetensors import safe_open
 
 inference_time_s = 60
 fps = 30
 device = "cuda"  # TODO: On Mac, use "mps" or "cpu"
 
-ckpt_path = "/mnt/sda/cyx/outputs/train/act_2025_2_17_t10003_limited_dual_randomization/checkpoints/061200/pretrained_model"
-# policy = PI0Policy.from_pretrained("lerobot/pi0")
-policy = ACTPolicy.from_pretrained(ckpt_path)
+def unflatten_dict(d, sep="/"):
+    outdict = {}
+    for key, value in d.items():
+        parts = key.split(sep)
+        d = outdict
+        for part in parts[:-1]:
+            if part not in d:
+                d[part] = {}
+            d = d[part]
+        d[parts[-1]] = value
+    return outdict
+
+def create_infer_policy(stats_file, policy_cls):
+    tensors = {}
+    with safe_open(stats_file, framework="pt", device=0) as fn:
+        for key in fn.keys():
+            tensors[key] = fn.get_tensor(key)
+    # import pdb; pdb.set_trace()
+    kwargs = {}
+    kwargs["dataset_stats"] = unflatten_dict(tensors)
+    policy = policy_cls.from_pretrained("lerobot/pi0", **kwargs)
+    return policy
+
+ckpt_path = "/home/rhos/lerobot/tmp/RISE_2025_2_21_t10003_limited_randomization/checkpoints/last/pretrained_model"
+policy = create_infer_policy("/home/rhos/lerobot/data/t20005_limited_randomization/meta_data/stats.safetensors", PI0Policy)
+# policy = RISEPolicy.from_pretrained(ckpt_path)
 policy.eval()
 policy.to(device)
 
@@ -147,6 +171,8 @@ for _ in range(inference_time_s * fps):
             observation['input_feats_list'] = [input_feats_list]
     # Compute the next action with the policy
     # based on the current observation
+    observation['task'] = ["Push the cube exactly into the white area."]
+    # import pdb; pdb.set_trace()
     action = policy.select_action(observation)
     # Remove batch dimension
     action = action.squeeze(0)

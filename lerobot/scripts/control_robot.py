@@ -268,7 +268,7 @@ def record(
     if has_method(robot, "teleop_safety_stop"):
         robot.teleop_safety_stop()
 
-    # dataset["num_episodes"] = 50
+    dataset["num_episodes"] = 65
 
     while True:
         if dataset["num_episodes"] >= num_episodes:
@@ -313,6 +313,8 @@ def record(
 
     log_say("Stop recording", play_sounds, blocking=True)
     stop_recording(robot, listener, display_cameras)
+
+    # dataset["num_episodes"] = 81
 
     lerobot_dataset = create_lerobot_dataset(dataset, run_compute_stats, push_to_hub, tags, play_sounds)
 
