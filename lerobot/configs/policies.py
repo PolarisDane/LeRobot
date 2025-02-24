@@ -71,28 +71,29 @@ class PreTrainedConfig(draccus.ChoiceRegistry, HubMixin, abc.ABC):
     def validate_features(self) -> None:
         raise NotImplementedError
 
+    # By cyx: Too stupid and ugly. Do consider modifying these code to merge together.
     @property
     def robot_state_feature(self) -> PolicyFeature | None:
-        for _, ft in self.input_features.items():
-            if ft.type is FeatureType.STATE:
+        for key, ft in self.input_features.items():
+            if key.startswith("observation.state"):
                 return ft
         return None
 
     @property
     def env_state_feature(self) -> PolicyFeature | None:
-        for _, ft in self.input_features.items():
-            if ft.type is FeatureType.ENV:
+        for key, ft in self.input_features.items():
+            if key.startswith("observation.env"):
                 return ft
         return None
 
     @property
     def image_features(self) -> dict[str, PolicyFeature]:
-        return {key: ft for key, ft in self.input_features.items() if ft.type is FeatureType.VISUAL}
+        return {key: ft for key, ft in self.input_features.items() if key.startswith("observation.image")}
 
     @property
     def action_feature(self) -> PolicyFeature | None:
-        for _, ft in self.output_features.items():
-            if ft.type is FeatureType.ACTION:
+        for key, ft in self.input_features.items():
+            if key.startswith("action"):
                 return ft
         return None
 

@@ -295,7 +295,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     init_logging()
     logging.info(pformat(OmegaConf.to_container(cfg)))
 
-    if cfg.policy.pretrained_path != None:
+    if cfg.policy.get('pretrained_path',None) != None:
         # By cyx: Load preset config for dataset factory.
         # We can merge this with policy factory later on
         # MODIFICATION NEEDED HERE!
@@ -371,7 +371,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
 
     logging.info("make_dataset")
     offline_dataset = make_dataset(cfg)
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     if isinstance(offline_dataset, MultiLeRobotDataset):
         logging.info(
             "Multiple datasets were provided. Applied the following index mapping to the provided datasets: "
@@ -404,7 +404,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     if cfg.training.save_freq == -1:
         cfg.training.save_freq = cfg.training.offline_steps // 10
 
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     optimizer, lr_scheduler = make_optimizer_and_scheduler(cfg, policy)
     grad_scaler = GradScaler(enabled=cfg.use_amp)
 
@@ -499,6 +499,7 @@ def train(cfg: DictConfig, out_dir: str | None = None, job_name: str | None = No
     while True:
         losses = 0
         for batch in tqdm(dataloader):
+            import pdb; pdb.set_trace()
             dataloading_s = time.perf_counter() - start_time
             if offline_step == 0:
                 logging.info("Start offline training on a fixed dataset")

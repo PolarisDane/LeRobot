@@ -171,9 +171,11 @@ class LeRobotDataset(torch.utils.data.Dataset):
         expected_image_keys = [k for k in item.keys() if k.startswith("observation.image")]
         expected_depth_keys = [k for k in item.keys() if k.startswith("observation.depth")]
 
-        # Only view_front with depth
-
-
+        # By cyx: Read text prompt from task.txt in the data directory.
+        task_file = self.root / self.repo_id / "task.txt"
+        if task_file.exists():
+            with open(task_file, "r") as f:
+                item["task"] = f.read().strip()
 
         if self.use_pointcloud and (self.camera_intrinsic is not None): 
             clouds=[]

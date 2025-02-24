@@ -535,6 +535,7 @@ class PI0FlowMatching(nn.Module):
             att_masks += [0] * num_img_embs
 
         lang_emb = self.paligemma_with_expert.embed_language_tokens(lang_tokens)
+        # By cyx: Can we cache embedding later?
 
         # Normalize language embeddings
         lang_emb_dim = lang_emb.shape[-1]

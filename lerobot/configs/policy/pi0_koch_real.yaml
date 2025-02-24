@@ -25,6 +25,7 @@ override_dataset_stats:
 training:
   train_gpus: [0]
   offline_steps: -1
+  grad_clip_norm: 10
   training_epochs: 600
   online_steps: 0
   eval_freq: -1
@@ -66,4 +67,10 @@ policy:
   scheduler_warmup_steps: null
   scheduler_decay_steps: null
   scheduler_decay_lr: null
+
+  freeze_vision_encoder: true
+  train_expert_only: true
+  train_state_proj: true
+
+  
   

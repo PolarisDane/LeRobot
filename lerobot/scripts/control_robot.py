@@ -268,7 +268,7 @@ def record(
     if has_method(robot, "teleop_safety_stop"):
         robot.teleop_safety_stop()
 
-    dataset["num_episodes"] = 65
+    # dataset["num_episodes"] = 30
 
     while True:
         if dataset["num_episodes"] >= num_episodes:

@@ -38,7 +38,7 @@ def _policy_cfg_from_hydra_cfg(policy_cfg_class, hydra_cfg):
     def list_to_tuple(item):
         return tuple(item) if isinstance(item, list) else item
     
-    if hydra_cfg.policy.pretrained_path != None:
+    if hydra_cfg.policy.get('pretrained_path',None) != None:
         # import pdb; pdb.set_trace()
         # By cyx: Load pretrain config and update according to given hydra config.
         # Currently just for PI0.
@@ -137,7 +137,7 @@ def make_policy(
 
     # import pdb; pdb.set_trace()
 
-    if hydra_cfg.policy.pretrained_path != None:
+    if hydra_cfg.policy.get('pretrained_path',None) != None:
         pretrained_policy_name_or_path = hydra_cfg.policy.pretrained_path
 
     if pretrained_policy_name_or_path != None and dataset_stats != None:
@@ -145,6 +145,7 @@ def make_policy(
         kwargs["pretrained_name_or_path"] = pretrained_policy_name_or_path
         kwargs["dataset_stats"] = dataset_stats
         kwargs["config"] = policy_cfg
+        import pdb; pdb.set_trace()
         policy = policy_cls.from_pretrained(**kwargs)
     elif pretrained_policy_name_or_path is None:
         # Make a fresh policy.
